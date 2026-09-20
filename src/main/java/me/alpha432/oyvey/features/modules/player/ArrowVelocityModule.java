@@ -3,45 +3,50 @@ package me.alpha432.oyvey.features.modules.player;
 import me.alpha432.oyvey.event.impl.network.PacketEvent;
 import me.alpha432.oyvey.event.system.Subscribe;
 import me.alpha432.oyvey.features.modules.Module;
-import net.minecraft.world.entity.projectile.Arrow;
+import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 
 /**
  * Mod Name: FastArrows
- * Description: Instantly multiplies the velocity of all fired arrows upon spawning.
+ * Description: Instantly multiplies the velocity of all user-fired arrows upon spawning.
  * Platform: Custom Minecraft Utility Client (Java)
  */
-public class FastArrowModule extends Module {
+public class FastArrowsModule extends Module {
 
     // Module constructor establishing name, description, and UI category
-    public FastArrowModule() {
-        super("FastArrows", "Makes your fired arrows shoot significantly faster", Category.PLAYER);
+    public FastArrowsModule() {
+        super("FastArrows", "Multiplies the initial velocity of all arrows you shoot", Category.PLAYER);
     }
 
-    // Listens for outgoing player action packets to modify projectile data
+    // Listens for outgoing player action packets to modify projectile data safely
     @Subscribe
     private void onPacketSend(PacketEvent.Send event) {
-        
-        // Target the local player character
+        // Null checks to prevent crashes if the player isn't fully loaded into a world
         if (mc.player == null || mc.world == null) return;
 
-        // Iterate through nearby entities to find arrows spawned by the player
+        // Iterate through all nearby entities in the current world chunk loading range
         mc.world.getEntitiesNeighbors().forEach(entity -> {
-            if (entity instanceof Arrow) {
-                Arrow arrow = (Arrow) entity;
+            
+            // Target all classes that inherit from AbstractArrow (Arrows, Spectral Arrows, Tridents)
+            if (entity instanceof AbstractArrow) {
+                AbstractArrow arrow = (AbstractArrow) entity;
 
-                // Ensure the arrow was shot by the client player
+                // Owner check ensures you only accelerate arrows shot by your own player character
                 if (arrow.getOwner() == mc.player) {
                     
-                    // Define the speed multiplier (e.g., 3.5 = 350% faster)
-                    double speedMultiplier = 3.5;
+                    // Define the speed multiplier (e.g., 4.0 = 400% faster)
+                    // Note: Settings above 6.0 may cause arrows to pass through block corners
+                    double velocityMultiplier = 4.0;
 
-                    // Apply the velocity multiplication across all physics axes
+                    // Apply the multiplication uniformly across all physical 3D axes
                     arrow.setDeltaMovement(
-                        arrow.getDeltaMovement().x * speedMultiplier,
-                        arrow.getDeltaMovement().y * speedMultiplier,
-                        arrow.getDeltaMovement().z * speedMultiplier
+                        arrow.getDeltaMovement().x * velocityMultiplier,
+                        arrow.getDeltaMovement().y * velocityMultiplier,
+                        arrow.getDeltaMovement().z * velocityMultiplier
                     );
+                    
+                    // Force the entity to update its state immediately
+                    arrow.hasImpulse = true;
                 }
             }
         });
